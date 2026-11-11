@@ -18,7 +18,8 @@ from nova.domain.text import TextError
 from nova.infrastructure.config import Settings
 from nova.infrastructure.task_runtime import TaskRuntime
 from nova.domain.tasks import TaskError
-from nova.api.task_schemas import ActionPayload, ApprovalDecisionPayload, TaskView, TaskList
+from nova.api.task_schemas import FakeActionPayload, WindowsActionPayload, WindowsCommandPayload, ApprovalDecisionPayload, TaskView, TaskList
+from nova.application.windows_commands import command_action
 
 
 def error_response(code: str, message: str, status: int, request_id: str) -> JSONResponse:
@@ -101,7 +102,7 @@ class ReadinessResponse(BaseModel):
 def create_app(settings: Settings) -> FastAPI:
     health = HealthService()
     text_service = TextProcessingService()
-    tasks = TaskRuntime(settings.task_database)
+    tasks = TaskRuntime(settings.task_database,settings.windows_tools_config)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -161,29 +162,62 @@ def create_app(settings: Settings) -> FastAPI:
         return TextResponse(**asdict(text_service.process(payload.text)))
 
     @app.post("/api/v1/tasks", response_model=TaskView)
-    def create_task(payload: ActionPayload):
+    def create_task(payload: FakeActionPayload):
         service = tasks.get()
         return service.create(service.registry.from_dict(payload.model_dump()))
 
     @app.get("/api/v1/tasks", response_model=TaskList)
     def list_tasks():
-        return {"tasks": tasks.get().list_tasks()}
+        return {"tasks": tasks.get().list_tasks(simulated=True)}
+
+    def check_kind(task_id: str, simulated: bool):
+        service=tasks.get()
+        if service.view(task_id)['simulated'] is not simulated:
+            raise TaskError('TASK_KIND_DENIED','Bu görev bu API kanalına ait değil.',403)
+        return service
 
     @app.get("/api/v1/tasks/{task_id}", response_model=TaskView)
     def get_task(task_id: str):
-        return tasks.get().view(task_id)
+        return check_kind(task_id,True).view(task_id)
 
     @app.post("/api/v1/tasks/{task_id}/approval", response_model=TaskView)
     def decide_approval(task_id: str, payload: ApprovalDecisionPayload):
-        return tasks.get().respond(task_id, payload.approval_id, payload.approve)
+        return check_kind(task_id,True).respond(task_id, payload.approval_id, payload.approve)
 
     @app.post("/api/v1/tasks/{task_id}/cancel", response_model=TaskView)
     def cancel_task(task_id: str):
-        return tasks.get().cancel(task_id)
+        return check_kind(task_id,True).cancel(task_id)
 
     @app.post("/api/v1/tasks/{task_id}/reconcile", response_model=TaskView)
     def reconcile_task(task_id: str):
-        return tasks.get().reconcile(task_id)
+        return check_kind(task_id,True).reconcile(task_id)
+
+    @app.post('/api/v1/windows/commands',response_model=TaskView)
+    def submit_windows_command(payload: WindowsCommandPayload):
+        service=tasks.get()
+        action=command_action(payload.text,payload.task_id,payload.action_id,tuple(service.registry.windows.roots))
+        return service.create(action)
+
+    @app.post('/api/v1/windows/tasks',response_model=TaskView)
+    def create_windows_task(payload: WindowsActionPayload):
+        service=tasks.get()
+        return service.create(service.registry.from_dict(payload.model_dump()))
+
+    @app.get('/api/v1/windows/tasks',response_model=TaskList)
+    def list_windows_tasks():
+        return {'tasks':tasks.get().list_tasks(simulated=False)}
+
+    @app.get('/api/v1/windows/tasks/{task_id}',response_model=TaskView)
+    def get_windows_task(task_id: str):
+        return check_kind(task_id,False).view(task_id)
+
+    @app.post('/api/v1/windows/tasks/{task_id}/approval',response_model=TaskView)
+    def approve_windows_task(task_id: str,payload: ApprovalDecisionPayload):
+        return check_kind(task_id,False).respond(task_id,payload.approval_id,payload.approve)
+
+    @app.post('/api/v1/windows/tasks/{task_id}/cancel',response_model=TaskView)
+    def cancel_windows_task(task_id: str):
+        return check_kind(task_id,False).cancel(task_id)
 
     # Dıştaki sınır, auth/Host hatalarının exception ayrıntısı sızdırmasını önler.
     app.add_middleware(LocalSessionBoundary, settings=settings)

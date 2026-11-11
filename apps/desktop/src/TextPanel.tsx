@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { inputError, intentLabels, MAX_TEXT_LENGTH, processText, TextProcessingError, type TextReply } from "./text";
 
-export function TextPanel({ connected }: { connected: boolean }) {
+export function TextPanel({ connected,onAction }: { connected: boolean;onAction?:(text:string)=>void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [reply, setReply] = useState<TextReply | null>(null);
@@ -49,6 +49,7 @@ export function TextPanel({ connected }: { connected: boolean }) {
       {reply && <div className="text-reply" aria-label="NOVA yanıtı">
         <p role="status">{reply.reply}</p>
         <p className="note">Algılanan niyet: {intentLabels[reply.intent]}</p>
+        {reply.action && onAction && <button onClick={()=>onAction(reply.original_text)}>İzinli Windows görevine hazırla</button>}
       </div>}
     </div>
   );

@@ -125,6 +125,78 @@ async fn reconcile_simulated_task(
     })?
 }
 
+#[tauri::command]
+async fn create_windows_task(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    action: tasks::ActionRequest,
+) -> Result<tasks::TaskView, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.create_windows_task(&action))
+        .await
+        .map_err(|_| {
+            text::TextError::local("HOST_UNAVAILABLE", "Masaüstü bağlantısı kullanılamıyor.")
+        })?
+}
+
+#[tauri::command]
+async fn submit_windows_command(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    task_id: String,
+    action_id: String,
+    text: String,
+) -> Result<tasks::TaskView, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        supervisor.submit_windows_command(&task_id, &action_id, &text)
+    })
+    .await
+    .map_err(|_| {
+        text::TextError::local("HOST_UNAVAILABLE", "Masaüstü bağlantısı kullanılamıyor.")
+    })?
+}
+
+#[tauri::command]
+async fn list_windows_tasks(
+    state: tauri::State<'_, Arc<Supervisor>>,
+) -> Result<tasks::TaskList, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.list_windows_tasks())
+        .await
+        .map_err(|_| {
+            text::TextError::local("HOST_UNAVAILABLE", "Masaüstü bağlantısı kullanılamıyor.")
+        })?
+}
+
+#[tauri::command]
+async fn decide_windows_approval(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    task_id: String,
+    approval_id: String,
+    approve: bool,
+) -> Result<tasks::TaskView, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        supervisor.windows_operation(&task_id, Some((&approval_id, approve)), false)
+    })
+    .await
+    .map_err(|_| {
+        text::TextError::local("HOST_UNAVAILABLE", "Masaüstü bağlantısı kullanılamıyor.")
+    })?
+}
+
+#[tauri::command]
+async fn cancel_windows_task(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    task_id: String,
+) -> Result<tasks::TaskView, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.windows_operation(&task_id, None, true))
+        .await
+        .map_err(|_| {
+            text::TextError::local("HOST_UNAVAILABLE", "Masaüstü bağlantısı kullanılamıyor.")
+        })?
+}
+
 fn main() {
     let supervisor = Arc::new(Supervisor::new());
     let startup = supervisor.clone();
@@ -139,7 +211,12 @@ fn main() {
             get_simulated_task,
             decide_simulated_approval,
             cancel_simulated_task,
-            reconcile_simulated_task
+            reconcile_simulated_task,
+            create_windows_task,
+            submit_windows_command,
+            list_windows_tasks,
+            decide_windows_approval,
+            cancel_windows_task
         ])
         .setup(move |_| {
             tauri::async_runtime::spawn_blocking(move || {

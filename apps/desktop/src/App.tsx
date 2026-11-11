@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { backendStatus, restartBackend, connectionLabels, type BackendStatus } from "./connection";
 import { TextPanel } from "./TextPanel";
 import { TaskPanel } from "./TaskPanel";
+import { WindowsPanel } from "./WindowsPanel";
 
 const failed: BackendStatus = { state: "failed", error_code: "HOST_UNAVAILABLE" };
 
 export function App() {
+  const [windowsDraft,setWindowsDraft]=useState("");
   const [status, setStatus] = useState<BackendStatus>({ state: "connecting", error_code: null });
   const restarting = useRef(false);
   const mounted = useRef(false);
@@ -58,9 +60,10 @@ export function App() {
       <button onClick={() => void reconnect()} disabled={status.state !== "failed"}>
         Yeniden bağlan
       </button>
-      <TextPanel connected={status.state === "ready"} />
+      <TextPanel connected={status.state === "ready"} onAction={setWindowsDraft} />
+      <WindowsPanel connected={status.state === "ready"} draft={windowsDraft} />
       <TaskPanel connected={status.state === "ready"} />
-      <p className="note">Yanıtlar yerel kurallarla üretilir. Bilgisayar eylemleri çalıştırılmaz.</p>
+      <p className="note">Sohbet yerel kurallarla çalışır. Gerçek eylemler yalnızca izinli Windows görev hattından geçer.</p>
     </main>
   );
 }

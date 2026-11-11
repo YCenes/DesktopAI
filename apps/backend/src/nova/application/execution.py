@@ -3,6 +3,8 @@ from dataclasses import asdict
 import json
 import time
 from uuid import uuid4
+import queue
+import threading
 
 from nova.application.tools import PermissionService, ToolRegistry
 from nova.domain.tasks import ActionRequest, ApprovalGrant, ExecutionResult, TaskError, TERMINAL
@@ -14,6 +16,21 @@ class ExecutionService:
         self.store, self.registry, self.policy = store, registry, policy
         self.session_id, self.clock = session_id, clock
         self.approval_ttl = 120
+        self.native_timeout = 3.0
+
+    def dispatch(self,action,deadline):
+        if action.tool_id.startswith('fake.'):
+            return self.registry.execute(action,deadline)
+        # Native çağrı takılırsa bounded caller unknown kaydeder; thread zorla sonlandırılmaz.
+        response=queue.Queue(maxsize=1)
+        def worker():
+            try:response.put((self.registry.execute(action,deadline),None))
+            except BaseException as error:response.put((None,error))
+        threading.Thread(target=worker,daemon=True,name='nova-native-dispatch').start()
+        try:result,error=response.get(timeout=max(0,min(self.native_timeout,deadline-time.monotonic())))
+        except queue.Empty:return ExecutionResult('unknown','Windows isteği süre içinde doğrulanamadı; otomatik tekrar yapılmaz.',False)
+        if error is not None:raise error
+        return result
 
     def action(self, row) -> ActionRequest:
         return self.registry.from_dict(json.loads(row["spec"]))
@@ -110,14 +127,19 @@ class ExecutionService:
 
         # DB transaction dışında adapter. İptal başladıktan sonraki etkileri geri almış sayılmaz.
         try:
-            result = self.registry.simulate(action)
-            if type(result) is not ExecutionResult or result.simulated is not True or result.status != "succeeded":
+            result = self.dispatch(action,deadline)
+            if type(result) is not ExecutionResult or result.simulated != action.tool_id.startswith('fake.') or result.status not in ('succeeded','unknown'):
                 raise ValueError("invalid fake result")
+        except TaskError as error:
+            result = ExecutionResult('failed',error.message,action.tool_id.startswith('fake.'))
         except Exception:
-            result = ExecutionResult("failed", "Simülasyon aracı hata verdi; gerçek Windows işlemi yapılmadı.")
+            if action.tool_id.startswith('fake.'):
+                result = ExecutionResult("failed", "Simülasyon aracı hata verdi; gerçek Windows işlemi yapılmadı.")
+            else:
+                result = ExecutionResult('unknown','Windows işleminin sonucu doğrulanamadı; otomatik tekrar yapılmaz.',False)
         with self.store.transaction() as db:
             row = self.store.row(db, task_id)
-            uncertain = row["cancel_requested"] or time.monotonic() >= deadline
+            uncertain = row["cancel_requested"] or time.monotonic() >= deadline or result.status == 'unknown'
             status = "unknown" if uncertain else result.status
             code = "OUTCOME_UNKNOWN" if uncertain else ("TOOL_ERROR" if status == "failed" else None)
             public = None if uncertain else asdict(result)

@@ -11,6 +11,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const MAX_TASK_RESPONSE_BYTES: u64 = 1_048_576;
+
 #[derive(Clone, Debug, Serialize)]
 pub struct BackendStatus {
     pub state: &'static str,
@@ -75,11 +77,20 @@ impl OwnedBackend {
         path: &str,
         body: Option<serde_json::Value>,
     ) -> Result<T, TextError> {
+        self.api_request(method, &format!("/tasks{path}"), body)
+    }
+
+    fn api_request<T: serde::de::DeserializeOwned>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<serde_json::Value>,
+    ) -> Result<T, TextError> {
         let mut request = self
             .client
             .request(
                 method,
-                format!("http://127.0.0.1:{}/api/v1/tasks{}", self.port, path),
+                format!("http://127.0.0.1:{}/api/v1{}", self.port, path),
             )
             .timeout(Duration::from_secs(15))
             .bearer_auth(&self.token);
@@ -95,10 +106,10 @@ impl OwnedBackend {
         let success = response.status().is_success();
         let mut bytes = Vec::new();
         response
-            .take(262_145)
+            .take(MAX_TASK_RESPONSE_BYTES + 1)
             .read_to_end(&mut bytes)
             .map_err(|_| TextError::contract())?;
-        if bytes.len() > 262_144 {
+        if bytes.len() as u64 > MAX_TASK_RESPONSE_BYTES {
             return Err(TextError::contract());
         }
         if !success {
@@ -201,8 +212,99 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+    pub fn create_windows_task(&self, action: &ActionRequest) -> Result<TaskView, TextError> {
+        action.validate()?;
+        if action.simulated() {
+            return Err(TextError::contract());
+        }
+        self.windows_call(
+            reqwest::Method::POST,
+            "/windows/tasks",
+            Some(serde_json::to_value(action).map_err(|_| TextError::contract())?),
+            Some(action.task_id()),
+        )
+    }
+    pub fn submit_windows_command(
+        &self,
+        task_id: &str,
+        action_id: &str,
+        text: &str,
+    ) -> Result<TaskView, TextError> {
+        identifier(task_id)?;
+        identifier(action_id)?;
+        validate_input(text)?;
+        self.windows_call(
+            reqwest::Method::POST,
+            "/windows/commands",
+            Some(serde_json::json!({"task_id":task_id,"action_id":action_id,"text":text})),
+            Some(task_id),
+        )
+    }
+    pub fn list_windows_tasks(&self) -> Result<TaskList, TextError> {
+        let slot = self.backend.lock().map_err(|_| TextError::contract())?;
+        let backend = slot
+            .as_ref()
+            .ok_or_else(|| TextError::local("BACKEND_UNAVAILABLE", "Backend'e bağlanılamadı."))?;
+        let reply: TaskList = backend.api_request(reqwest::Method::GET, "/windows/tasks", None)?;
+        if reply.tasks.len() > 20 {
+            return Err(TextError::contract());
+        }
+        for task in &reply.tasks {
+            task.validate()?;
+            if task.simulated {
+                return Err(TextError::contract());
+            }
+        }
+        Ok(reply)
+    }
+    fn windows_call(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<serde_json::Value>,
+        id: Option<&str>,
+    ) -> Result<TaskView, TextError> {
+        let slot = self.backend.lock().map_err(|_| TextError::contract())?;
+        let backend = slot
+            .as_ref()
+            .ok_or_else(|| TextError::local("BACKEND_UNAVAILABLE", "Backend'e bağlanılamadı."))?;
+        let reply: TaskView = backend.api_request(method, path, body)?;
+        reply.validate()?;
+        if reply.simulated || id.is_some_and(|id| reply.action.task_id() != id) {
+            return Err(TextError::contract());
+        }
+        Ok(reply)
+    }
+    pub fn windows_operation(
+        &self,
+        task_id: &str,
+        approval: Option<(&str, bool)>,
+        cancel: bool,
+    ) -> Result<TaskView, TextError> {
+        identifier(task_id)?;
+        let (suffix, body) = if let Some((id, approve)) = approval {
+            identifier(id)?;
+            (
+                "/approval",
+                Some(serde_json::json!({"approval_id":id,"approve":approve,"source":"screen"})),
+            )
+        } else if cancel {
+            ("/cancel", None)
+        } else {
+            return Err(TextError::contract());
+        };
+        self.windows_call(
+            reqwest::Method::POST,
+            &format!("/windows/tasks/{task_id}{suffix}"),
+            body,
+            Some(task_id),
+        )
+    }
     pub fn create_task(&self, action: &ActionRequest) -> Result<TaskView, TextError> {
         action.validate()?;
+        if !action.simulated() {
+            return Err(TextError::contract());
+        }
         let slot = self.backend.lock().map_err(|_| TextError::contract())?;
         let backend = slot
             .as_ref()
@@ -454,6 +556,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bounded_unicode_file_history_fits_task_transport_limit() {
+        let id = "00000000-0000-0000-0000-000000000001";
+        let file = serde_json::json!({"root_id":"test","relative_path":format!("{}.txt","漢".repeat(170)),"identity":"a".repeat(64),"size":10});
+        let task = serde_json::json!({"api_version":"1","simulated":false,"external_calls":0,
+            "action":{"task_id":id,"action_id":id,"tool_id":"windows.search_files","arguments":{"root_id":"test","query":"漢"},"scope":"windows.files"},
+            "status":"succeeded","error_code":null,"approval":null,
+            "result":{"status":"succeeded","message":"Metadata araması tamamlandı.","simulated":false,"details":{"completion":"metadata_search","process_id":null,"files":vec![file;20],"truncated":true}},
+            "events":[{"sequence":1,"kind":"execution_result","status":"succeeded","created_at":1.0}]});
+        let value = serde_json::json!({"tasks":vec![task;20]});
+        let bytes = serde_json::to_vec(&value).unwrap();
+        assert!(bytes.len() > 262_144);
+        assert!((bytes.len() as u64) < MAX_TASK_RESPONSE_BYTES);
+        let list: TaskList = serde_json::from_slice(&bytes).unwrap();
+        for task in list.tasks {
+            task.validate().unwrap();
+        }
+    }
+
+    #[test]
     fn task_ipc_uses_real_backend_approval_and_persistent_results() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let nonce = std::time::SystemTime::now()
@@ -466,6 +587,7 @@ mod tests {
             .args(["-I", "-S", "-u"])
             .arg(root.join("scripts/dev_backend.py"))
             .env("NOVA_TASK_DATA_DIR", &data)
+            .env_remove("NOVA_WINDOWS_TOOLS_CONFIG")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
@@ -498,6 +620,26 @@ mod tests {
             "APPROVAL_REPLAY"
         );
         assert_eq!(supervisor.list_tasks().unwrap().tasks.len(), 1);
+        let real:ActionRequest=serde_json::from_value(serde_json::json!({
+            "task_id":"00000000-0000-0000-0000-000000000004","action_id":"00000000-0000-0000-0000-000000000005",
+            "tool_id":"windows.open_app","arguments":{"app_id":"windows.notepad"},"scope":"windows.apps"})).unwrap();
+        assert!(supervisor.create_task(&real).is_err());
+        let denied = supervisor.create_windows_task(&real).unwrap();
+        assert_eq!(denied.status, crate::tasks::TaskStatus::Failed);
+        assert_eq!(denied.error_code.as_deref(), Some("PERMISSION_DENIED"));
+        assert!(!denied.simulated);
+        assert_eq!(supervisor.list_windows_tasks().unwrap().tasks.len(), 1);
+        assert_eq!(
+            supervisor
+                .submit_windows_command(
+                    "00000000-0000-0000-0000-000000000006",
+                    "00000000-0000-0000-0000-000000000007",
+                    "Chrome'u aç"
+                )
+                .unwrap_err()
+                .error_code,
+            "APP_NOT_ALLOWED"
+        );
         assert!(supervisor
             .task_operation("../../bad", "view", None)
             .is_err());

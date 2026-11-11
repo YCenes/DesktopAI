@@ -7,8 +7,9 @@ from nova.domain.tasks import TaskError
 
 
 class TaskRuntime:
-    def __init__(self, path: Path | None):
+    def __init__(self, path: Path | None, windows_config: Path | None = None):
         self.path = path
+        self.windows_config = windows_config
         self.service = None
         self._temporary = None
         self._owner = None
@@ -39,7 +40,9 @@ class TaskRuntime:
                 raise TaskError("TASK_STORE_BUSY", "Görev geçmişi başka bir NOVA oturumunda açık.", 503) from None
             try:
                 from nova.application.tasks import TaskService
-                self.service = TaskService(self.path)
+                from nova.application.tools import ToolRegistry
+                from nova.infrastructure.windows_tools import WindowsTools
+                self.service = TaskService(self.path,registry=ToolRegistry(WindowsTools(self.windows_config)))
                 return self.service
             except Exception:
                 self.close()

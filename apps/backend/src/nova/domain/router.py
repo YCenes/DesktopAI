@@ -16,7 +16,7 @@ class IntentRouter:
         action = self.action(normalized, key)
         if action is not None:
             return TextResult(text, normalized, Intent.ACTION_REQUEST,
-                              "Eylem isteğini tanıdım. Bu aşamada uygulama açma veya başka bilgisayar işlemleri yapmıyorum.", action=action)
+                              "Eylem isteğini sınıflandırdım. Bu yanıt işlem başlatmaz; kayıtlı Windows görevi için ayrıca izin kontrolü gerekir.", action=action)
         if is_arithmetic(normalized):
             arithmetic, reply = calculate(normalized)
             return TextResult(text, normalized, Intent.ARITHMETIC, reply, arithmetic=arithmetic)

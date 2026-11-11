@@ -1,6 +1,23 @@
 {
   "identifier": "main",
-  "description": "Ana pencerede bağlantı yönetimi ve yan etkisiz yerel metin işleme.",
-  "windows": ["main"],
-  "permissions": ["allow-backend-status", "allow-backend-restart", "allow-process-text", "allow-create-simulated-task", "allow-list-simulated-tasks", "allow-get-simulated-task", "allow-decide-simulated-approval", "allow-cancel-simulated-task", "allow-reconcile-simulated-task"]
+  "description": "Yerel ana pencerede dar ba?lant?, metin, sim?lasyon ve izinli Windows g?revleri.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-backend-status",
+    "allow-backend-restart",
+    "allow-process-text",
+    "allow-create-simulated-task",
+    "allow-list-simulated-tasks",
+    "allow-get-simulated-task",
+    "allow-decide-simulated-approval",
+    "allow-cancel-simulated-task",
+    "allow-reconcile-simulated-task",
+    "allow-create-windows-task",
+    "allow-submit-windows-command",
+    "allow-list-windows-tasks",
+    "allow-decide-windows-approval",
+    "allow-cancel-windows-task"
+  ]
 }

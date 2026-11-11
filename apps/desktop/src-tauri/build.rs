@@ -10,6 +10,11 @@ fn main() {
             "decide_simulated_approval",
             "cancel_simulated_task",
             "reconcile_simulated_task",
+            "create_windows_task",
+            "submit_windows_command",
+            "list_windows_tasks",
+            "decide_windows_approval",
+            "cancel_windows_task",
         ]),
     ))
     .expect("Tauri yapılandırması oluşturulamadı");

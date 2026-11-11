@@ -44,7 +44,10 @@ def main() -> int:
             data_dir = Path(os.environ.get("NOVA_TASK_DATA_DIR") or str(Path(os.environ["LOCALAPPDATA"]) / "NOVA"))
             if not data_dir.is_absolute():
                 raise ValueError("Veri dizini mutlak olmalı.")
-            settings = Settings(session_token=token, port=listener.getsockname()[1], task_database=data_dir / "tasks.sqlite3")
+            tools_config=Path(os.environ.get('NOVA_WINDOWS_TOOLS_CONFIG') or str(data_dir/'windows-tools.local.json'))
+            if not tools_config.is_absolute():
+                raise ValueError('Araç yapılandırma yolu mutlak olmalı.')
+            settings = Settings(session_token=token, port=listener.getsockname()[1], task_database=data_dir / "tasks.sqlite3",windows_tools_config=tools_config)
             config = uvicorn.Config(
                 create_app(settings), host=settings.host, port=settings.port,
                 access_log=False, log_config=None, server_header=False,

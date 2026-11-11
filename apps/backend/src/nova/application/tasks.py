@@ -86,14 +86,15 @@ class TaskService:
                 public_approval = asdict(ApprovalRequest(approval["approval_id"], action, tool.risk,
                     tool.expected_effect, approval["expires_at"], approval["policy_version"]))
             events = [dict(e) for e in db.execute("SELECT sequence,kind,status,created_at FROM task_events WHERE task_id=? ORDER BY sequence", (task_id,))]
-            return {"api_version": "1", "simulated": True, "external_calls": 0,
+            return {"api_version": "1", "simulated": action.tool_id.startswith('fake.'), "external_calls": 0,
                 "action": asdict(action), "status": row["status"],
                 "result": json.loads(row["result"]) if row["result"] else None,
                 "error_code": row["error_code"], "approval": public_approval, "events": events}
 
-    def list_tasks(self):
+    def list_tasks(self, simulated: bool | None = None):
         with self.store.transaction() as db:
-            ids = [r[0] for r in db.execute("SELECT task_id FROM tasks ORDER BY rowid DESC LIMIT 20")]
+            condition='' if simulated is None else (" WHERE json_extract(spec,'$.tool_id') LIKE 'fake.%'" if simulated else " WHERE json_extract(spec,'$.tool_id') LIKE 'windows.%'")
+            ids = [r[0] for r in db.execute("SELECT task_id FROM tasks"+condition+" ORDER BY rowid DESC LIMIT 20")]
         return [self.view(task_id) for task_id in ids]
 
     def cancel(self, task_id):

@@ -52,11 +52,34 @@ class SearchFilesArguments:
 
 
 @dataclass(frozen=True)
+class RegisteredAppArguments:
+    app_id: Literal["windows.notepad"]
+
+
+@dataclass(frozen=True)
+class ScopedSearchArguments:
+    root_id: str
+    query: str
+
+
+@dataclass(frozen=True)
+class OpenFileArguments:
+    root_id: str
+    relative_path: str
+    identity: str
+
+
+@dataclass(frozen=True)
+class WebSearchArguments:
+    query: str
+
+
+@dataclass(frozen=True)
 class ActionRequest:
     task_id: str
     action_id: str
     tool_id: str
-    arguments: OpenAppArguments | SearchFilesArguments
+    arguments: OpenAppArguments | SearchFilesArguments | RegisteredAppArguments | ScopedSearchArguments | OpenFileArguments | WebSearchArguments
     scope: str
 
     def canonical(self) -> str:
@@ -71,7 +94,7 @@ class ToolDefinition:
     side_effect: str
     risk: Literal["low", "high"]
     expected_effect: str
-    simulated: Literal[True] = True
+    simulated: bool = True
 
 
 @dataclass(frozen=True)
@@ -104,10 +127,27 @@ class ApprovalGrant:
 
 
 @dataclass(frozen=True)
+class FileMatch:
+    root_id: str
+    relative_path: str
+    identity: str
+    size: int
+
+
+@dataclass(frozen=True)
+class ToolResultDetails:
+    completion: Literal['process_started','handoff_requested','metadata_search','search_submitted']
+    process_id: int | None = None
+    files: tuple[FileMatch, ...] = ()
+    truncated: bool = False
+
+
+@dataclass(frozen=True)
 class ExecutionResult:
     status: str
     message: str
-    simulated: Literal[True] = True
+    simulated: bool = True
+    details: ToolResultDetails | None = None
 
 
 @dataclass(frozen=True)

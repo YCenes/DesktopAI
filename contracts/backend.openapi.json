@@ -366,6 +366,248 @@
           }
         }
       }
+    },
+    "/api/v1/windows/commands": {
+      "post": {
+        "summary": "Submit Windows Command",
+        "operationId": "submit_windows_command_api_v1_windows_commands_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WindowsCommandPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/windows/tasks": {
+      "get": {
+        "summary": "List Windows Tasks",
+        "operationId": "list_windows_tasks_api_v1_windows_tasks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Windows Task",
+        "operationId": "create_windows_task_api_v1_windows_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/WindowsAppAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ScopedSearchAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FileOpenAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WebAction"
+                  }
+                ],
+                "title": "Payload",
+                "discriminator": {
+                  "propertyName": "tool_id",
+                  "mapping": {
+                    "windows.open_app": "#/components/schemas/WindowsAppAction",
+                    "windows.search_files": "#/components/schemas/ScopedSearchAction",
+                    "windows.open_file": "#/components/schemas/FileOpenAction",
+                    "windows.web_search": "#/components/schemas/WebAction"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/windows/tasks/{task_id}": {
+      "get": {
+        "summary": "Get Windows Task",
+        "operationId": "get_windows_task_api_v1_windows_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/windows/tasks/{task_id}/approval": {
+      "post": {
+        "summary": "Approve Windows Task",
+        "operationId": "approve_windows_task_api_v1_windows_tasks__task_id__approval_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecisionPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/windows/tasks/{task_id}/cancel": {
+      "post": {
+        "summary": "Cancel Windows Task",
+        "operationId": "cancel_windows_task_api_v1_windows_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -442,6 +684,18 @@
               },
               {
                 "$ref": "#/components/schemas/SearchAction"
+              },
+              {
+                "$ref": "#/components/schemas/WindowsAppAction"
+              },
+              {
+                "$ref": "#/components/schemas/ScopedSearchAction"
+              },
+              {
+                "$ref": "#/components/schemas/FileOpenAction"
+              },
+              {
+                "$ref": "#/components/schemas/WebAction"
               }
             ],
             "title": "Action",
@@ -449,7 +703,11 @@
               "propertyName": "tool_id",
               "mapping": {
                 "fake.open_app": "#/components/schemas/OpenAction",
-                "fake.search_files": "#/components/schemas/SearchAction"
+                "fake.search_files": "#/components/schemas/SearchAction",
+                "windows.open_app": "#/components/schemas/WindowsAppAction",
+                "windows.open_file": "#/components/schemas/FileOpenAction",
+                "windows.search_files": "#/components/schemas/ScopedSearchAction",
+                "windows.web_search": "#/components/schemas/WebAction"
               }
             }
           },
@@ -508,6 +766,50 @@
           "rounded"
         ],
         "title": "ArithmeticResponse"
+      },
+      "DetailsView": {
+        "properties": {
+          "completion": {
+            "type": "string",
+            "enum": [
+              "process_started",
+              "handoff_requested",
+              "metadata_search",
+              "search_submitted"
+            ],
+            "title": "Completion"
+          },
+          "process_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Id"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileMatchView"
+            },
+            "type": "array",
+            "title": "Files",
+            "default": []
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "completion"
+        ],
+        "title": "DetailsView"
       },
       "ErrorResponse": {
         "properties": {
@@ -569,6 +871,104 @@
           "created_at"
         ],
         "title": "EventView"
+      },
+      "FileMatchView": {
+        "properties": {
+          "root_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,31}$",
+            "title": "Root Id"
+          },
+          "relative_path": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Relative Path"
+          },
+          "identity": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Identity"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "root_id",
+          "relative_path",
+          "identity",
+          "size"
+        ],
+        "title": "FileMatchView"
+      },
+      "FileOpenAction": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "tool_id": {
+            "type": "string",
+            "const": "windows.open_file",
+            "title": "Tool Id"
+          },
+          "arguments": {
+            "$ref": "#/components/schemas/FileOpenPayload"
+          },
+          "scope": {
+            "type": "string",
+            "const": "windows.files",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "tool_id",
+          "arguments",
+          "scope"
+        ],
+        "title": "FileOpenAction"
+      },
+      "FileOpenPayload": {
+        "properties": {
+          "root_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,31}$",
+            "title": "Root Id"
+          },
+          "relative_path": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Relative Path"
+          },
+          "identity": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Identity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "root_id",
+          "relative_path",
+          "identity"
+        ],
+        "title": "FileOpenPayload"
       },
       "HTTPValidationError": {
         "properties": {
@@ -686,6 +1086,21 @@
         "type": "object",
         "title": "ReadinessResponse"
       },
+      "RegisteredAppPayload": {
+        "properties": {
+          "app_id": {
+            "type": "string",
+            "const": "windows.notepad",
+            "title": "App Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "app_id"
+        ],
+        "title": "RegisteredAppPayload"
+      },
       "ResultView": {
         "properties": {
           "status": {
@@ -702,8 +1117,17 @@
           },
           "simulated": {
             "type": "boolean",
-            "const": true,
             "title": "Simulated"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -714,6 +1138,65 @@
           "simulated"
         ],
         "title": "ResultView"
+      },
+      "ScopedSearchAction": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "tool_id": {
+            "type": "string",
+            "const": "windows.search_files",
+            "title": "Tool Id"
+          },
+          "arguments": {
+            "$ref": "#/components/schemas/ScopedSearchPayload"
+          },
+          "scope": {
+            "type": "string",
+            "const": "windows.files",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "tool_id",
+          "arguments",
+          "scope"
+        ],
+        "title": "ScopedSearchAction"
+      },
+      "ScopedSearchPayload": {
+        "properties": {
+          "root_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,31}$",
+            "title": "Root Id"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Query"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "root_id",
+          "query"
+        ],
+        "title": "ScopedSearchPayload"
       },
       "SearchAction": {
         "properties": {
@@ -802,7 +1285,6 @@
           },
           "simulated": {
             "type": "boolean",
-            "const": true,
             "title": "Simulated"
           },
           "external_calls": {
@@ -817,6 +1299,18 @@
               },
               {
                 "$ref": "#/components/schemas/SearchAction"
+              },
+              {
+                "$ref": "#/components/schemas/WindowsAppAction"
+              },
+              {
+                "$ref": "#/components/schemas/ScopedSearchAction"
+              },
+              {
+                "$ref": "#/components/schemas/FileOpenAction"
+              },
+              {
+                "$ref": "#/components/schemas/WebAction"
               }
             ],
             "title": "Action",
@@ -824,7 +1318,11 @@
               "propertyName": "tool_id",
               "mapping": {
                 "fake.open_app": "#/components/schemas/OpenAction",
-                "fake.search_files": "#/components/schemas/SearchAction"
+                "fake.search_files": "#/components/schemas/SearchAction",
+                "windows.open_app": "#/components/schemas/WindowsAppAction",
+                "windows.open_file": "#/components/schemas/FileOpenAction",
+                "windows.search_files": "#/components/schemas/ScopedSearchAction",
+                "windows.web_search": "#/components/schemas/WebAction"
               }
             }
           },
@@ -1016,6 +1514,124 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WebAction": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "tool_id": {
+            "type": "string",
+            "const": "windows.web_search",
+            "title": "Tool Id"
+          },
+          "arguments": {
+            "$ref": "#/components/schemas/WebPayload"
+          },
+          "scope": {
+            "type": "string",
+            "const": "windows.web",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "tool_id",
+          "arguments",
+          "scope"
+        ],
+        "title": "WebAction"
+      },
+      "WebPayload": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Query"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "WebPayload"
+      },
+      "WindowsAppAction": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "tool_id": {
+            "type": "string",
+            "const": "windows.open_app",
+            "title": "Tool Id"
+          },
+          "arguments": {
+            "$ref": "#/components/schemas/RegisteredAppPayload"
+          },
+          "scope": {
+            "type": "string",
+            "const": "windows.apps",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "tool_id",
+          "arguments",
+          "scope"
+        ],
+        "title": "WindowsAppAction"
+      },
+      "WindowsCommandPayload": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "text"
+        ],
+        "title": "WindowsCommandPayload"
       }
     }
   }
