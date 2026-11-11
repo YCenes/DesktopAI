@@ -1,0 +1,1022 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NOVA yerel backend",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Get Health",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ready": {
+      "get": {
+        "summary": "Get Readiness",
+        "operationId": "get_readiness_api_v1_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Hazır değil"
+          }
+        }
+      }
+    },
+    "/api/v1/text": {
+      "post": {
+        "summary": "Process Text",
+        "operationId": "process_text_api_v1_text_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "summary": "List Tasks",
+        "operationId": "list_tasks_api_v1_tasks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Task",
+        "operationId": "create_task_api_v1_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/OpenAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SearchAction"
+                  }
+                ],
+                "title": "Payload",
+                "discriminator": {
+                  "propertyName": "tool_id",
+                  "mapping": {
+                    "fake.open_app": "#/components/schemas/OpenAction",
+                    "fake.search_files": "#/components/schemas/SearchAction"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "get": {
+        "summary": "Get Task",
+        "operationId": "get_task_api_v1_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/approval": {
+      "post": {
+        "summary": "Decide Approval",
+        "operationId": "decide_approval_api_v1_tasks__task_id__approval_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecisionPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "summary": "Cancel Task",
+        "operationId": "cancel_task_api_v1_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/reconcile": {
+      "post": {
+        "summary": "Reconcile Task",
+        "operationId": "reconcile_task_api_v1_tasks__task_id__reconcile_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionResponse": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "open_application",
+              "search_files",
+              "web_search"
+            ],
+            "title": "Operation"
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Target"
+          },
+          "executable": {
+            "type": "boolean",
+            "const": false,
+            "title": "Executable"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation",
+          "target",
+          "executable"
+        ],
+        "title": "ActionResponse"
+      },
+      "ApprovalDecisionPayload": {
+        "properties": {
+          "approval_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Approval Id"
+          },
+          "approve": {
+            "type": "boolean",
+            "title": "Approve"
+          },
+          "source": {
+            "type": "string",
+            "const": "screen",
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "approval_id",
+          "approve",
+          "source"
+        ],
+        "title": "ApprovalDecisionPayload"
+      },
+      "ApprovalView": {
+        "properties": {
+          "approval_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Approval Id"
+          },
+          "action": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OpenAction"
+              },
+              {
+                "$ref": "#/components/schemas/SearchAction"
+              }
+            ],
+            "title": "Action",
+            "discriminator": {
+              "propertyName": "tool_id",
+              "mapping": {
+                "fake.open_app": "#/components/schemas/OpenAction",
+                "fake.search_files": "#/components/schemas/SearchAction"
+              }
+            }
+          },
+          "risk": {
+            "type": "string",
+            "const": "high",
+            "title": "Risk"
+          },
+          "expected_effect": {
+            "type": "string",
+            "title": "Expected Effect"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "approval_id",
+          "action",
+          "risk",
+          "expected_effect",
+          "expires_at",
+          "policy_version"
+        ],
+        "title": "ApprovalView"
+      },
+      "ArithmeticResponse": {
+        "properties": {
+          "expression": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Expression"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]{1,6})?$",
+            "title": "Value"
+          },
+          "rounded": {
+            "type": "boolean",
+            "title": "Rounded"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expression",
+          "value",
+          "rounded"
+        ],
+        "title": "ArithmeticResponse"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorResponse"
+      },
+      "EventView": {
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "title": "Sequence"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "unknown"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "number",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sequence",
+          "kind",
+          "status",
+          "created_at"
+        ],
+        "title": "EventView"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "api_version": {
+            "type": "string",
+            "title": "Api Version",
+            "default": "1"
+          },
+          "app_version": {
+            "type": "string",
+            "title": "App Version",
+            "default": "0.1.0"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          }
+        },
+        "type": "object",
+        "title": "HealthResponse"
+      },
+      "Intent": {
+        "type": "string",
+        "enum": [
+          "greeting",
+          "arithmetic",
+          "action_request",
+          "general_chat",
+          "unknown"
+        ],
+        "title": "Intent"
+      },
+      "OpenAction": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "tool_id": {
+            "type": "string",
+            "const": "fake.open_app",
+            "title": "Tool Id"
+          },
+          "arguments": {
+            "$ref": "#/components/schemas/OpenArguments"
+          },
+          "scope": {
+            "type": "string",
+            "const": "simulation.apps",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "tool_id",
+          "arguments",
+          "scope"
+        ],
+        "title": "OpenAction"
+      },
+      "OpenArguments": {
+        "properties": {
+          "app_id": {
+            "type": "string",
+            "enum": [
+              "demo.editor",
+              "demo.admin"
+            ],
+            "title": "App Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "app_id"
+        ],
+        "title": "OpenArguments"
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "api_version": {
+            "type": "string",
+            "title": "Api Version",
+            "default": "1"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ready"
+          }
+        },
+        "type": "object",
+        "title": "ReadinessResponse"
+      },
+      "ResultView": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Simulated"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "message",
+          "simulated"
+        ],
+        "title": "ResultView"
+      },
+      "SearchAction": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "Action Id"
+          },
+          "tool_id": {
+            "type": "string",
+            "const": "fake.search_files",
+            "title": "Tool Id"
+          },
+          "arguments": {
+            "$ref": "#/components/schemas/SearchArguments"
+          },
+          "scope": {
+            "type": "string",
+            "const": "simulation.files",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "tool_id",
+          "arguments",
+          "scope"
+        ],
+        "title": "SearchAction"
+      },
+      "SearchArguments": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "enum": [
+              "ornek",
+              "rapor"
+            ],
+            "title": "Query"
+          },
+          "root_id": {
+            "type": "string",
+            "const": "synthetic.documents",
+            "title": "Root Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query",
+          "root_id"
+        ],
+        "title": "SearchArguments"
+      },
+      "TaskList": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskView"
+            },
+            "type": "array",
+            "title": "Tasks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tasks"
+        ],
+        "title": "TaskList"
+      },
+      "TaskView": {
+        "properties": {
+          "api_version": {
+            "type": "string",
+            "const": "1",
+            "title": "Api Version"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Simulated"
+          },
+          "external_calls": {
+            "type": "integer",
+            "const": 0,
+            "title": "External Calls"
+          },
+          "action": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OpenAction"
+              },
+              {
+                "$ref": "#/components/schemas/SearchAction"
+              }
+            ],
+            "title": "Action",
+            "discriminator": {
+              "propertyName": "tool_id",
+              "mapping": {
+                "fake.open_app": "#/components/schemas/OpenAction",
+                "fake.search_files": "#/components/schemas/SearchAction"
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "unknown"
+            ],
+            "title": "Status"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventView"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "api_version",
+          "simulated",
+          "external_calls",
+          "action",
+          "status",
+          "result",
+          "error_code",
+          "approval",
+          "events"
+        ],
+        "title": "TaskView"
+      },
+      "TextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TextRequest"
+      },
+      "TextResponse": {
+        "properties": {
+          "api_version": {
+            "type": "string",
+            "const": "1",
+            "title": "Api Version"
+          },
+          "original_text": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Original Text"
+          },
+          "normalized_text": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Normalized Text"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/Intent"
+          },
+          "reply": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Reply"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "arithmetic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArithmeticResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "external_calls": {
+            "type": "integer",
+            "const": 0,
+            "title": "External Calls"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "api_version",
+          "original_text",
+          "normalized_text",
+          "intent",
+          "reply",
+          "action",
+          "arithmetic",
+          "external_calls"
+        ],
+        "title": "TextResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
