@@ -15,6 +15,12 @@ fn main() {
             "list_windows_tasks",
             "decide_windows_approval",
             "cancel_windows_task",
+            "cloud_settings",
+            "configure_cloud",
+            "start_chat",
+            "poll_chat",
+            "cancel_chat",
+            "clear_chat",
         ]),
     ))
     .expect("Tauri yapılandırması oluşturulamadı");

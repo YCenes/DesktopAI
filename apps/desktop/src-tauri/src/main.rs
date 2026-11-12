@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod backend;
+mod chat;
 mod tasks;
 mod text;
 use backend::{BackendStatus, Supervisor};
@@ -197,6 +198,64 @@ async fn cancel_windows_task(
         })?
 }
 
+#[tauri::command]
+async fn cloud_settings(
+    state: tauri::State<'_, Arc<Supervisor>>,
+) -> Result<chat::CloudState, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.cloud_settings())
+        .await
+        .map_err(|_| text::TextError::contract())?
+}
+#[tauri::command]
+async fn configure_cloud(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    config: chat::CloudConfig,
+) -> Result<chat::CloudState, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.configure_cloud(config))
+        .await
+        .map_err(|_| text::TextError::contract())?
+}
+#[tauri::command]
+async fn start_chat(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    request_id: String,
+    text: String,
+) -> Result<chat::ChatReply, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.start_chat(&request_id, &text))
+        .await
+        .map_err(|_| text::TextError::contract())?
+}
+#[tauri::command]
+async fn poll_chat(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    request_id: String,
+) -> Result<chat::ChatReply, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.poll_chat(&request_id, false))
+        .await
+        .map_err(|_| text::TextError::contract())?
+}
+#[tauri::command]
+async fn cancel_chat(
+    state: tauri::State<'_, Arc<Supervisor>>,
+    request_id: String,
+) -> Result<chat::ChatReply, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.poll_chat(&request_id, true))
+        .await
+        .map_err(|_| text::TextError::contract())?
+}
+#[tauri::command]
+async fn clear_chat(state: tauri::State<'_, Arc<Supervisor>>) -> Result<bool, text::TextError> {
+    let supervisor = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || supervisor.clear_chat())
+        .await
+        .map_err(|_| text::TextError::contract())?
+}
+
 fn main() {
     let supervisor = Arc::new(Supervisor::new());
     let startup = supervisor.clone();
@@ -216,7 +275,13 @@ fn main() {
             submit_windows_command,
             list_windows_tasks,
             decide_windows_approval,
-            cancel_windows_task
+            cancel_windows_task,
+            cloud_settings,
+            configure_cloud,
+            start_chat,
+            poll_chat,
+            cancel_chat,
+            clear_chat
         ])
         .setup(move |_| {
             tauri::async_runtime::spawn_blocking(move || {

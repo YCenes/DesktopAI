@@ -3,6 +3,7 @@ import { backendStatus, restartBackend, connectionLabels, type BackendStatus } f
 import { TextPanel } from "./TextPanel";
 import { TaskPanel } from "./TaskPanel";
 import { WindowsPanel } from "./WindowsPanel";
+import { ChatPanel } from "./ChatPanel";
 
 const failed: BackendStatus = { state: "failed", error_code: "HOST_UNAVAILABLE" };
 
@@ -61,9 +62,10 @@ export function App() {
         Yeniden bağlan
       </button>
       <TextPanel connected={status.state === "ready"} onAction={setWindowsDraft} />
+      <ChatPanel connected={status.state === "ready"} onAction={setWindowsDraft} />
       <WindowsPanel connected={status.state === "ready"} draft={windowsDraft} />
       <TaskPanel connected={status.state === "ready"} />
-      <p className="note">Sohbet yerel kurallarla çalışır. Gerçek eylemler yalnızca izinli Windows görev hattından geçer.</p>
+      <p className="note">Yerel kurallar önce çalışır. Bulut sohbeti ayrıca yapılandırılır. Gerçek eylemler yalnızca izinli Windows görev hattından geçer.</p>
     </main>
   );
 }

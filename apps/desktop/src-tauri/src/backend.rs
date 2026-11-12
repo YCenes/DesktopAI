@@ -212,6 +212,68 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+    pub fn cloud_settings(&self) -> Result<crate::chat::CloudState, TextError> {
+        let reply: crate::chat::CloudState =
+            self.chat_call(reqwest::Method::GET, "/cloud/settings", None)?;
+        reply.validate()
+    }
+    pub fn configure_cloud(
+        &self,
+        config: crate::chat::CloudConfig,
+    ) -> Result<crate::chat::CloudState, TextError> {
+        config.validate()?;
+        let reply: crate::chat::CloudState = self.chat_call(
+            reqwest::Method::POST,
+            "/cloud/settings",
+            Some(serde_json::to_value(config).map_err(|_| TextError::contract())?),
+        )?;
+        reply.validate()
+    }
+    pub fn start_chat(&self, id: &str, text: &str) -> Result<crate::chat::ChatReply, TextError> {
+        identifier(id)?;
+        validate_input(text)?;
+        let reply: crate::chat::ChatReply = self.chat_call(
+            reqwest::Method::POST,
+            "/chat",
+            Some(serde_json::json!({"request_id":id,"text":text})),
+        )?;
+        reply.validate(id)
+    }
+    pub fn poll_chat(&self, id: &str, cancel: bool) -> Result<crate::chat::ChatReply, TextError> {
+        identifier(id)?;
+        let path = if cancel {
+            format!("/chat/{id}/cancel")
+        } else {
+            format!("/chat/{id}")
+        };
+        let reply: crate::chat::ChatReply = self.chat_call(
+            if cancel {
+                reqwest::Method::POST
+            } else {
+                reqwest::Method::GET
+            },
+            &path,
+            None,
+        )?;
+        reply.validate(id)
+    }
+    pub fn clear_chat(&self) -> Result<bool, TextError> {
+        let reply: crate::chat::Cleared =
+            self.chat_call(reqwest::Method::POST, "/cloud/clear", None)?;
+        Ok(reply.cleared)
+    }
+    fn chat_call<T: serde::de::DeserializeOwned>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<serde_json::Value>,
+    ) -> Result<T, TextError> {
+        let slot = self.backend.lock().map_err(|_| TextError::contract())?;
+        let backend = slot
+            .as_ref()
+            .ok_or_else(|| TextError::local("BACKEND_UNAVAILABLE", "Backend'e bağlanılamadı."))?;
+        backend.api_request(method, path, body)
+    }
     pub fn create_windows_task(&self, action: &ActionRequest) -> Result<TaskView, TextError> {
         action.validate()?;
         if action.simulated() {
@@ -475,6 +537,8 @@ fn launch_backend(timeout: Duration) -> Result<OwnedBackend, &'static str> {
         .build()
         .map_err(|_| "CLIENT_INIT_FAILED")?;
     let mut command = Command::new(python);
+    #[cfg(test)]
+    command.env("NOVA_LOAD_LOCAL_ENV", "0");
     command
         .args(["-I", "-S", "-u"])
         .arg(root.join("scripts/dev_backend.py"))
@@ -556,6 +620,70 @@ mod tests {
     use super::*;
 
     #[test]
+    fn chat_ipc_uses_fake_backend_without_key_and_no_windows_tasks() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let data = std::env::temp_dir().join(format!("nova-chat-ipc-{nonce}"));
+        let mut command = Command::new(base_python(&root).unwrap());
+        command
+            .args(["-I", "-S", "-u"])
+            .arg(root.join("scripts/dev_backend.py"))
+            .env("NOVA_LOAD_LOCAL_ENV", "0")
+            .env("NOVA_TASK_DATA_DIR", &data)
+            .env("NOVA_LLM_MODE", "fake")
+            .env_remove("AI_GATEWAY_API_KEY")
+            .env_remove("NOVA_WINDOWS_TOOLS_CONFIG")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        let client = Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_millis(500))
+            .build()
+            .unwrap();
+        let backend =
+            launch_command(command, client, "b".repeat(64), Duration::from_secs(45)).unwrap();
+        let supervisor = Supervisor::new();
+        *supervisor.backend.lock().unwrap() = Some(backend);
+        let state = supervisor.cloud_settings().unwrap();
+        assert!(!state.enabled);
+        assert!(state.simulated);
+        let arithmetic = supervisor
+            .start_chat("00000000-0000-0000-0000-000000000011", "2 + 2 kaç?")
+            .unwrap();
+        assert_eq!(arithmetic.reply, "Dört.");
+        assert_eq!(arithmetic.external_calls, 0);
+        supervisor
+            .configure_cloud(crate::chat::CloudConfig {
+                enabled: true,
+                model_id: "mistral/ministral-8b".into(),
+                monthly_usd: "1".into(),
+                per_task_usd: "0.01".into(),
+            })
+            .unwrap();
+        let id = "00000000-0000-0000-0000-000000000012";
+        let mut reply = supervisor.start_chat(id, "Python nedir?").unwrap();
+        let end = Instant::now() + Duration::from_secs(5);
+        while reply.status == crate::chat::ChatStatus::Running && Instant::now() < end {
+            thread::sleep(Duration::from_millis(20));
+            reply = supervisor.poll_chat(id, false).unwrap();
+        }
+        assert_eq!(reply.status, crate::chat::ChatStatus::Succeeded);
+        assert_eq!(reply.source, crate::chat::ChatSource::Fake);
+        assert!(reply.action.is_none());
+        assert_eq!(supervisor.cloud_settings().unwrap().usage.requests, 1);
+        assert!(supervisor.list_windows_tasks().unwrap().tasks.is_empty());
+        assert!(supervisor.clear_chat().unwrap());
+        supervisor.stop();
+        assert!(data.starts_with(std::env::temp_dir()));
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
     fn bounded_unicode_file_history_fits_task_transport_limit() {
         let id = "00000000-0000-0000-0000-000000000001";
         let file = serde_json::json!({"root_id":"test","relative_path":format!("{}.txt","漢".repeat(170)),"identity":"a".repeat(64),"size":10});
@@ -586,6 +714,7 @@ mod tests {
         command
             .args(["-I", "-S", "-u"])
             .arg(root.join("scripts/dev_backend.py"))
+            .env("NOVA_LOAD_LOCAL_ENV", "0")
             .env("NOVA_TASK_DATA_DIR", &data)
             .env_remove("NOVA_WINDOWS_TOOLS_CONFIG")
             .stdin(Stdio::piped())

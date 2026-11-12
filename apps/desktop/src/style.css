@@ -27,3 +27,7 @@ button:focus-visible { outline: 3px solid #91bbff; outline-offset: 4px; }
 .task-list p { line-height: 1.5; }
 .approval { border-left: 3px solid #e6bc73; padding-left: 12px; margin-bottom: 12px; }
 summary { cursor: pointer; margin-top: 12px; }
+.chat-panel { border-top: 1px solid #334154; padding-top: 12px; }
+.chat-panel label { margin: 12px 0 8px; }
+.chat-panel input:not([type="checkbox"]), .chat-panel select { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #63758b; border-radius: 8px; background: #1d2734; color: inherit; font: inherit; }
+.chat-panel button { margin: 8px 8px 0 0; }

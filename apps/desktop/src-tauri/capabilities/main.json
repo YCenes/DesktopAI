@@ -18,6 +18,7 @@
     "allow-submit-windows-command",
     "allow-list-windows-tasks",
     "allow-decide-windows-approval",
-    "allow-cancel-windows-task"
+    "allow-cancel-windows-task",
+    "allow-cloud-settings", "allow-configure-cloud", "allow-start-chat", "allow-poll-chat", "allow-cancel-chat", "allow-clear-chat"
   ]
 }
